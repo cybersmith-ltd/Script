@@ -7,8 +7,8 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 # Variables
 $remoteRegistryServiceName = "RemoteRegistry"
 
-$regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
-$keyName = "LocalAccountTokenFilterPolicy"
+$filterPolicyRegKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+$filterPolicyRegValue = "LocalAccountTokenFilterPolicy"
 
 $firewallRules = @(
     @{ DisplayName = "File and Printer Sharing (Echo Request - ICMPv4-In)"; Name = "FPS-ICMP4-ERQ-In" },
@@ -25,25 +25,24 @@ function SettingSummary {
     $remoteReg = Get-Service -Name $remoteRegistryServiceName -ErrorAction SilentlyContinue
     if ($remoteReg) {
         if ($remoteReg.StartType -eq 'Disabled') {
-            Write-Host "RemoteRegistry: Service startup set to 'Disabled' = Disabled." -ForegroundColor Red
+            Write-Host "RemoteRegistry: Service startup type set to 'Disabled'." -ForegroundColor Red
         } else {
-            Write-Host "RemoteRegistry: Service startup set to '$($remoteReg.StartType)' = Enabled." -ForegroundColor Green
+            Write-Host "RemoteRegistry: Service startup type set to '$($remoteReg.StartType)'." -ForegroundColor Green
         }
 
     } else {
-        Write-Host "RemoteRegistry: Cannot be found on device = Disabled." -ForegroundColor Red
+        Write-Host "RemoteRegistry: Cannot be found on device." -ForegroundColor Red
     }
 
-    $key = Get-ItemProperty -Path $regPath -Name $keyName -ErrorAction SilentlyContinue
-    if ($key) {
-        if ($key.LocalAccountTokenFilterPolicy -eq 1) {
-            Write-Host "LocalAccountTokenFilterPolicy: Key exists and set to 1 = Enabled." -ForegroundColor Green
+    $filterPolicyRegValueObject = Get-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue -ErrorAction SilentlyContinue
+    if ($filterPolicyRegValueObject) {
+        if ($filterPolicyRegValueObject.LocalAccountTokenFilterPolicy -eq 1) {
+            Write-Host "LocalAccountTokenFilterPolicy: Value exists and set to 1 = Enabled." -ForegroundColor Green
         } else {
-            Write-Host "LocalAccountTokenFilterPolicy: Key exists and set to 0 = Disabled." -ForegroundColor Red
-            Set-ItemProperty -Path $regPath -Name $keyName -Value 1
+            Write-Host "LocalAccountTokenFilterPolicy: Value exists and set to 0 = Disabled." -ForegroundColor Red
         }
     } else {
-        Write-Host "LocalAccountTokenFilterPolicy: Key does not exist = Disabled." -ForegroundColor Red
+        Write-Host "LocalAccountTokenFilterPolicy: Value does not exist = Disabled." -ForegroundColor Red
     }
 
     foreach ($rule in $firewallRules) {
@@ -79,11 +78,11 @@ function RemoteRegistry($enable, $customMode) {
 
                 switch ($remoteRegAction) {
                     "y" {
-                        Write-Host "Change Made: RemoteRegistry service is 'Disabled'. Setting to 'Manual'."
+                        Write-Host "Change Made: RemoteRegistry service startup type is 'Disabled'. Setting to 'Manual'."
                         Set-Service -Name $remoteRegistryServiceName -StartupType Manual
                     }
                     "n" {
-                        Write-Host "No Change Made: RemoteRegistry service has been left as 'Disabled'."
+                        Write-Host "No Change Made: RemoteRegistry service startup type has been left as 'Disabled'."
                     }
                     default {
                         Write-Warning "Invalid option: $remoteRegAction. Please run the script again and type 'y' or 'n'."
@@ -91,12 +90,12 @@ function RemoteRegistry($enable, $customMode) {
                     }
                 }
             } else {
-                Write-Host "No Change Required: RemoteRegistry service is not disabled and already set to '$($remoteReg.StartType)'."
+                Write-Host "No Change Required: RemoteRegistry service startup type is not disabled and already set to '$($remoteReg.StartType)'."
             }
         } else {
             if ($remoteReg.StartType -ne 'Disabled') {
                 if ($customMode) {
-                    Write-Host "The RemoteRegistry service is set to '$($remoteReg.StartType)'. Would you like to disable it?"
+                    Write-Host "The RemoteRegistry service startup type is set to '$($remoteReg.StartType)'. Would you like to disable it?"
                     $remoteRegAction = Read-Host "Type 'y' to set it to 'Disabled' or 'n' to leave it as '$($remoteReg.StartType)'"
                 } else {
                     $remoteRegAction = "y"
@@ -104,11 +103,11 @@ function RemoteRegistry($enable, $customMode) {
 
                 switch ($remoteRegAction) {
                     "y" {
-                        Write-Host "Change Made: RemoteRegistry service changed from '$($remoteReg.StartType)' to disabled."
+                        Write-Host "Change Made: RemoteRegistry service startup type changed from '$($remoteReg.StartType)' to 'Disabled'."
                         Set-Service -Name $remoteRegistryServiceName -StartupType Disabled
                     }
                     "n" {
-                        Write-Host "No Change Made: RemoteRegistry service has been left as '$($remoteReg.StartType)'."
+                        Write-Host "No Change Made: RemoteRegistry service startup type has been left as '$($remoteReg.StartType)'."
                     }
                     default {
                         Write-Warning "Invalid option: $remoteRegAction. Please run the script again and type 'y' or 'n'."
@@ -116,7 +115,7 @@ function RemoteRegistry($enable, $customMode) {
                     }
                 }
             } else {
-                Write-Host "No Change Required: RemoteRegistry service is disabled."
+                Write-Host "No Change Required: RemoteRegistry service startup type is disabled."
             } 
         }
     } else {
@@ -129,16 +128,16 @@ function RemoteRegistry($enable, $customMode) {
 function LocalAccountTokenFilterPolicy($enable, $customMode) {
     Write-Host "## LocalAccountTokenFilterPolicy"
 
-    $key = Get-ItemProperty -Path $regPath -Name $keyName -ErrorAction SilentlyContinue
+    $value = Get-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue -ErrorAction SilentlyContinue
 
     if ($enable) {
-        if ($key) {
-            if ($key.LocalAccountTokenFilterPolicy -eq 1) {
+        if ($value) {
+            if ($value.LocalAccountTokenFilterPolicy -eq 1) {
                 Write-Host "No Change Required: LocalAccountTokenFilterPolicy exists and is enabled."
             } else {
                 if ($customMode) {
-                    Write-Host "The LocalAccountTokenFilterPolicy key exists, but is not set to 1. Would you like to set it to 1 to enable it?"
-                    $filterPolicyAction = Read-Host "Type 'y' to set it to 1 it or 'n' not to"
+                    Write-Host "The LocalAccountTokenFilterPolicy value exists, but is not set to 1. Would you like to set it to 1 to enable it?"
+                    $filterPolicyAction = Read-Host "Type 'y' to set it to 1 or 'n' not to"
                 } else {
                     $filterPolicyAction = "y"
                 }
@@ -146,7 +145,7 @@ function LocalAccountTokenFilterPolicy($enable, $customMode) {
                 switch ($filterPolicyAction) {
                     "y" {
                     Write-Host "Change Made: LocalAccountTokenFilterPolicy set to 1 to enable it."
-                    Set-ItemProperty -Path $regPath -Name $keyName -Value 1
+                    Set-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue -Value 1
                     }
                     "n" {
                         Write-Host "No Change Made: The LocalAccountTokenFilterPolicy has been left set to 0."
@@ -160,7 +159,7 @@ function LocalAccountTokenFilterPolicy($enable, $customMode) {
             }
         } else {
             if ($customMode) {
-                Write-Host "The LocalAccountTokenFilterPolicy key does not exists. Would you like to create it and set it to 1 to enable it?"
+                Write-Host "The LocalAccountTokenFilterPolicy value does not exist. Would you like to create it and set it to 1 to enable it?"
                 $filterPolicyAction = Read-Host "Type 'y' to create it or 'n' not to"
             } else {
                 $filterPolicyAction = "y"
@@ -169,10 +168,10 @@ function LocalAccountTokenFilterPolicy($enable, $customMode) {
             switch ($filterPolicyAction) {
                 "y" {
                     Write-Host "Change Made: LocalAccountTokenFilterPolicy created and set to 1."
-                    Set-ItemProperty -Path $regPath -Name $keyName -Value 1
+                    Set-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue -Value 1
                 }
                 "n" {
-                    Write-Host "No Change Made: The LocalAccountTokenFilterPolicy key note been created."
+                    Write-Host "No Change Made: The LocalAccountTokenFilterPolicy value has not been created."
                 }
                 default {
                     Write-Warning "Invalid option: $filterPolicyAction. Please run the script again and type 'y' or 'n'."
@@ -181,9 +180,9 @@ function LocalAccountTokenFilterPolicy($enable, $customMode) {
             }
         }
     } else {
-        if ($key) {
+        if ($value) {
             if ($customMode) {
-                Write-Host "The LocalAccountTokenFilterPolicy key exists. Would you like to delete it?"
+                Write-Host "The LocalAccountTokenFilterPolicy value exists. Would you like to delete it?"
                 $filterPolicyAction = Read-Host "Type 'y' to delete it or 'n' not to"
             } else {
                 $filterPolicyAction = "y"
@@ -191,19 +190,19 @@ function LocalAccountTokenFilterPolicy($enable, $customMode) {
 
             switch ($filterPolicyAction) {
                 "y" {
-                    Write-Host "Change Made: The LocalAccountTokenFilterPolicy registry key has been deleted."
-                    Remove-ItemProperty -Path $regPath -Name $keyName -Force
+                    Write-Host "Change Made: The LocalAccountTokenFilterPolicy registry value has been deleted."
+                    Remove-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue -Force
                 }
                 "n" {
-                    Write-Host "No Change Made: The LocalAccountTokenFilterPolicy key has been left in the registry."
+                    Write-Host "No Change Made: The LocalAccountTokenFilterPolicy value has been left in the registry."
                 }
                 default {
-                    Write-Warning "Invalid option: $remoteRegAction. Please run the script again and type 'y' or 'n'."
+                    Write-Warning "Invalid option: $filterPolicyAction. Please run the script again and type 'y' or 'n'."
                     return
                 }
             }
         } else {
-            Write-Host "No Change Required: LocalAccountTokenFilterPolicy does not exist."
+            Write-Host "No Change Required: LocalAccountTokenFilterPolicy value does not exist."
         }
     }
     Write-Host ""
@@ -222,7 +221,7 @@ function Firewall($enable, $customMode) {
                         Write-Host "No Change Required: $($rule.DisplayName) ($($fr.Profile)) is already enabled."
                     } else {
                         if ($customMode) {
-                            Write-Host "The $($rule.DisplayName) ($($fr.Profile)) rule is disable. Would you like to enable it?"
+                            Write-Host "The $($rule.DisplayName) ($($fr.Profile)) rule is disabled. Would you like to enable it?"
                             $firewallAction = Read-Host "Type 'y' to enable it or 'n' to leave it disabled."
                         } else {
                             $firewallAction = "y"
@@ -234,7 +233,7 @@ function Firewall($enable, $customMode) {
                                 Enable-NetFirewallRule -Name $fr.Name
                             }
                             "n" {
-                                Write-Host "No Change Made: The $($rule.DisplayName) ($($fr.Profile)) rule been left disabled."
+                                Write-Host "No Change Made: The $($rule.DisplayName) ($($fr.Profile)) rule has been left disabled."
                             }
                             default {
                                 Write-Warning "Invalid option: $firewallAction. Please run the script again and type 'y' or 'n'."
@@ -256,11 +255,11 @@ function Firewall($enable, $customMode) {
 
                         switch ($firewallAction) {
                             "y" {
-                                Write-Host "Change Made: The $($rule.DisplayName) ($($fr.Profile)) rule been disabled."
+                                Write-Host "Change Made: The $($rule.DisplayName) ($($fr.Profile)) rule has been disabled."
                                 Disable-NetFirewallRule -Name $fr.Name
                             }
                             "n" {
-                                Write-Host "No Change Made: The $($rule.DisplayName) ($($fr.Profile)) rule been left enabled."
+                                Write-Host "No Change Made: The $($rule.DisplayName) ($($fr.Profile)) rule has been left enabled."
                             }
                             default {
                                 Write-Warning "Invalid option: $firewallAction. Please run the script again and type 'y' or 'n'."
@@ -280,7 +279,7 @@ function Firewall($enable, $customMode) {
 # Enable or disable the settings
 function Enable() {
     Write-Host "## Enable or Disable Settings"
-    $enableAction = Read-Host "Type 'on' to enable or 'off' disable the scan settings"
+    $enableAction = Read-Host "Type 'on' to enable or 'off' to disable the scan settings"
     switch ($enableAction) {
         "on" {
             Write-Host "On: ENABLING Nessus Scan Settings."
@@ -288,7 +287,7 @@ function Enable() {
             return $true
         }
         "off" {
-            Write-Host "Off: DISABLING Nessus Scan Rules."
+            Write-Host "Off: DISABLING Nessus Scan Settings."
             Write-Host ""
             return $false
         }
@@ -305,8 +304,8 @@ Write-Host "## Cybersmith Nessus Scan Settings Tool:"
 Write-Host "This tool has 3 modes:"
 Write-Host "STANDARD (Default): Applies our recommended settings automatically."
 Write-Host "CUSTOM: Requires you to approve each change manually."
-Write-Host "INFO: Lists what each settings is currently set to, but makes no changes."
-$modeAction = Read-Host "Just press enter for the default STANDRD mode, or type 'custom' or 'info' for those modes"
+Write-Host "INFO: Lists the current configuration of each setting and makes no changes."
+$modeAction = Read-Host "Just press enter for the default STANDARD mode, or type 'custom' or 'info' for those modes"
 switch ($modeAction) {
     { $_ -in "", "standard" } {
         Write-Host "Running in STANDARD Mode."
@@ -335,7 +334,7 @@ switch ($modeAction) {
         SettingSummary
     }
     default {
-        Write-Warning "Invalid option: $modeAction. Run the script again and press enter to use the default STANDRD mode, or type 'custom' or 'info' for those modes."
+        Write-Warning "Invalid option: $modeAction. Run the script again and press enter to use the default STANDARD mode, or type 'custom' or 'info' for those modes."
     }
 }
 Write-Host "Complete"
