@@ -1,5 +1,5 @@
 # Cybersmith Scripts
-These are scripts used by Cybersmith to perform our Cybersecurity testing work.
+These are scripts used by Cybersmith to perform our cybersecurity testing work.
 
 ## ConfigForNessusScan.ps1
 An interactive script that configures a Windows device for scanning by Nessus based on user inputs.
