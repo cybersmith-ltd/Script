@@ -21,7 +21,7 @@ $firewallRules = @(
 
 # Settings
 function SettingSummary {
-    Write-Host "## Setting Summary:"
+    Write-Host "# Setting Summary" -ForegroundColor DarkYellow
     $remoteReg = Get-Service -Name $remoteRegistryServiceName -ErrorAction SilentlyContinue
     if ($remoteReg) {
         if ($remoteReg.StartType -eq 'Disabled') {
@@ -64,7 +64,7 @@ function SettingSummary {
 
 # Remote Registry
 function RemoteRegistry($enable, $customMode) {
-    Write-Host "## RemoteRegistry Service"
+    Write-Host "# RemoteRegistry Service" -ForegroundColor DarkYellow
     $remoteReg = Get-Service -Name $remoteRegistryServiceName -ErrorAction SilentlyContinue
     if ($remoteReg) {
         if ($enable) {
@@ -126,7 +126,7 @@ function RemoteRegistry($enable, $customMode) {
 
 # LocalAccountTokenFilterPolicy
 function LocalAccountTokenFilterPolicy($enable, $customMode) {
-    Write-Host "## LocalAccountTokenFilterPolicy"
+    Write-Host "# LocalAccountTokenFilterPolicy" -ForegroundColor DarkYellow
 
     $value = Get-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue -ErrorAction SilentlyContinue
 
@@ -191,7 +191,7 @@ function LocalAccountTokenFilterPolicy($enable, $customMode) {
             switch ($filterPolicyAction) {
                 "y" {
                     Write-Host "Change Made: The LocalAccountTokenFilterPolicy registry value has been deleted."
-                    Remove-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue -Force
+                    Remove-ItemProperty -Path $filterPolicyRegKey -Name $filterPolicyRegValue
                 }
                 "n" {
                     Write-Host "No Change Made: The LocalAccountTokenFilterPolicy value has been left in the registry."
@@ -210,7 +210,7 @@ function LocalAccountTokenFilterPolicy($enable, $customMode) {
 
 # Firewall
 function Firewall($enable, $customMode) {
-    Write-Host "## Firewall"
+    Write-Host "# Firewall" -ForegroundColor DarkYellow
     foreach ($rule in $firewallRules) {
         $foundRules = Get-NetFirewallRule -Name $rule.Name -ErrorAction SilentlyContinue
 
@@ -278,16 +278,36 @@ function Firewall($enable, $customMode) {
 
 # Enable or disable the settings
 function Enable() {
-    Write-Host "## Enable or Disable Settings"
+    Write-Host "# Enable or Disable Settings" -ForegroundColor DarkYellow
     $enableAction = Read-Host "Type 'on' to enable or 'off' to disable the scan settings"
     switch ($enableAction) {
         "on" {
-            Write-Host "On: ENABLING Nessus Scan Settings."
+            Write-Host ""
+            Write-Host "# Commands To Be Run" -ForegroundColor DarkYellow
+            Write-Host "ENABLING Nessus Scan Settings using these commands:"
+            Write-Host "Set-Service -Name ""RemoteRegistry"" -StartupType Manual"
+            Write-Host "Set-ItemProperty -Path ""HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"" -Name ""LocalAccountTokenFilterPolicy"" -Value 1 -ErrorAction SilentlyContinue"
+            Write-Host "Enable-NetFirewallRule -Name ""FPS-ICMP4-ERQ-In"""
+            Write-Host "Enable-NetFirewallRule -Name ""FPS-NB_Session-In-TCP"""
+            Write-Host "Enable-NetFirewallRule -Name ""FPS-SMB-In-TCP"""
+            Write-Host "Enable-NetFirewallRule -Name ""WMI-ASYNC-In-TCP"""
+            Write-Host "Enable-NetFirewallRule -Name ""WMI-RPCSS-In-TCP"""
+            Write-Host "Enable-NetFirewallRule -Name ""WMI-WINMGMT-In-TCP"""
             Write-Host ""
             return $true
         }
         "off" {
-            Write-Host "Off: DISABLING Nessus Scan Settings."
+            Write-Host ""
+            Write-Host "# Commands To Be Run" -ForegroundColor DarkYellow
+            Write-Host "DISABLING Nessus Scan Settings using these commands:"
+            Write-Host "Set-Service -Name ""RemoteRegistry"" -StartupType Disabled"
+            Write-Host "Remove-ItemProperty -Path ""HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"" -Name ""LocalAccountTokenFilterPolicy"""
+            Write-Host "Disable-NetFirewallRule -Name ""FPS-ICMP4-ERQ-In"""
+            Write-Host "Disable-NetFirewallRule -Name ""FPS-NB_Session-In-TCP"""
+            Write-Host "Disable-NetFirewallRule -Name ""FPS-SMB-In-TCP"""
+            Write-Host "Disable-NetFirewallRule -Name ""WMI-ASYNC-In-TCP"""
+            Write-Host "Disable-NetFirewallRule -Name ""WMI-RPCSS-In-TCP"""
+            Write-Host "Disable-NetFirewallRule -Name ""WMI-WINMGMT-In-TCP"""
             Write-Host ""
             return $false
         }
@@ -300,12 +320,15 @@ function Enable() {
 }
 
 # STANDARD or CUSTOM mode
-Write-Host "## Cybersmith Nessus Scan Settings Tool:"
+Write-Host ""
+Write-Host "# Cybersmith Nessus Scan Settings Tool:" -ForegroundColor DarkYellow
 Write-Host "This tool has 3 modes:"
-Write-Host "STANDARD (Default): Applies our recommended settings automatically."
-Write-Host "CUSTOM: Requires you to approve each change manually."
-Write-Host "INFO: Lists the current configuration of each setting and makes no changes."
-$modeAction = Read-Host "Just press enter for the default STANDARD mode, or type 'custom' or 'info' for those modes"
+Write-Host "- STANDARD (Default): Applies our recommended settings automatically."
+Write-Host "- CUSTOM: Requires you to approve each change manually."
+Write-Host "- INFO: Lists the current configuration of each setting and makes no changes."
+Write-Host ""
+
+$modeAction = Read-Host "Press enter (or type 'standard') to use the default recommended settings. Or type 'custom' or 'info' for those modes"
 switch ($modeAction) {
     { $_ -in "", "standard" } {
         Write-Host "Running in STANDARD Mode."
